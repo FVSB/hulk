@@ -11,14 +11,14 @@ class NFA:
         self.map = transitions
         self.vocabulary = set()
         self.transitions = { state: {} for state in range(states) }
-
+        
         for (origin, symbol), destinations in transitions.items():
             assert hasattr(destinations, '__iter__'), 'Invalid collection of states'
             self.transitions[origin][symbol] = destinations
             self.vocabulary.add(symbol)
-
+            
         self.vocabulary.discard('')
-
+        
     def epsilon_transitions(self, state):
         assert state in self.transitions, 'Invalid state'
         try:
@@ -47,16 +47,16 @@ class NFA:
             pass
 
 class DFA(NFA):
-
+    
     def __init__(self, states, finals, transitions, start=0):
         assert all(isinstance(value, int) for value in transitions.values())
         assert all(len(symbol) > 0 for origin, symbol in transitions)
-
+        
         transitions = { key: [value] for key, value in transitions.items() }
         NFA.__init__(self, states, finals, transitions, start)
         self.current = start
-
-    def _move(self, symbol):
+        
+    def _move(self, symbol):        
         if symbol not in self.vocabulary:
             print(f"El simbolo: '{symbol}', no pertenece al vocabulario del automata.", file=sys.stderr)
             return False
@@ -67,11 +67,11 @@ class DFA(NFA):
         print(f"No hay transicion desde el estado '{self.current}' " + \
                 f" para el simbolo: '{symbol}'")
         return False
-
+    
     def _reset(self):
         self.current = self.start
-
-    def recognize(self, string):
+        
+    def recognize(self, string):        
         self._reset()
         for i in string:
             if not self._move(i):
@@ -100,7 +100,7 @@ def move(automaton, states, symbol):
     `new_states`: Conjunto de estados de `automaton` resultantes
     '''
     moves = set()
-    for state in states:
+    for state in states:        
         next_states = automaton.transitions[state].get(symbol, [])
         moves.update(next_states)
     return moves
@@ -120,17 +120,17 @@ def epsilon_closure(automaton, states):
     Return
     -----------
     `new_states`: Conjunto de estados de `automaton` resultantes
-    '''
+    '''    
     pending = list(states)
     closure = set(states)
-
+    
     while pending:
-        state = pending.pop()
+        state = pending.pop()        
         news_states = set(automaton.transitions[state].get('', []))
         difference = news_states.difference(closure)
         pending.extend(difference)
         closure.update(difference)
-
+                
     return set(closure)
 
 def nfa_to_dfa(automaton):
@@ -148,12 +148,12 @@ def nfa_to_dfa(automaton):
     '''
     class Container(set):
         def __init_subclass__(cls) -> None:
-            return super().__init_subclass__()
+            return super().__init_subclass__()    
         id = -1
         is_final = False
 
     transitions = {}
-
+    
     start = Container(epsilon_closure(automaton, [automaton.start]))
     start.id = 0
     start.is_final = any(s in automaton.finals for s in start)
@@ -163,7 +163,7 @@ def nfa_to_dfa(automaton):
     while pending:
         state = pending.pop()
 
-        for symbol in automaton.vocabulary:
+        for symbol in automaton.vocabulary:            
             _move = move(automaton= automaton, states= state, symbol= symbol)
             _closure = Container(epsilon_closure(automaton, _move))
 
@@ -180,9 +180,9 @@ def nfa_to_dfa(automaton):
             try:
                 transitions[state.id, symbol]
                 assert False, 'Invalid DFA!!!'
-            except KeyError:
-                transitions[state.id, symbol] = _closure.id
-
+            except KeyError:                             
+                transitions[state.id, symbol] = _closure.id                
+    
     finals = [ state.id for state in states if state.is_final ]
     dfa = DFA(len(states), finals, transitions)
     return dfa
@@ -405,31 +405,31 @@ def automata_union(a1, a2):
         `union`: Automata Union (`NFA`)
     '''
     transitions = {}
-
+    
     start = 0
     d1 = 1
     d2 = a1.states + d1
     final = a2.states + d2
-
+    
     for (origin, symbol), destinations in a1.map.items():
         transitions[origin + d1, symbol] = [dest + d1 for dest in destinations]
-
-    for (origin, symbol), destinations in a2.map.items():
+        
+    for (origin, symbol), destinations in a2.map.items():        
         transitions[origin + d2, symbol] = [dest + d2 for dest in destinations]
 
     trans = transitions.get((start, ''), [])
     transitions[start, ''] = trans + [d1, d2]
-
+    
     for f1 in a1.finals:
         trans = transitions.get((f1 + d1, ''), [])
         transitions[f1 + d1, ''] = trans + [final]
     for f2 in a2.finals:
         trans = transitions.get((f2 + d2, ''), [])
         transitions[f2 + d2, ''] = trans + [final]
-
+            
     states = a1.states + a2.states + 2
     finals = { final }
-
+    
     return NFA(states, finals, transitions, start)
 
 def automata_concatenation(a1, a2):
@@ -447,12 +447,12 @@ def automata_concatenation(a1, a2):
         `concat`: Automata Concatenacion (`NFA`)
     '''
     transitions = {}
-
+    
     start = 0
     d1 = 0
     d2 = a1.states + d1
     final = a2.states + d2
-
+    
     for (origin, symbol), destinations in a1.map.items():
         transitions[origin + d1, symbol] = [dest + d1 for dest in destinations]
 
@@ -465,10 +465,10 @@ def automata_concatenation(a1, a2):
     for f2 in a2.finals:
         trans = transitions.get((f2 + d2, ''), [])
         transitions[f2 + d2, ''] = trans + [final]
-
+    
     states = a1.states + a2.states + 1
     finals = { final }
-
+    
     return NFA(states, finals, transitions, start)
 
 def automata_closure(a1):
@@ -478,31 +478,31 @@ def automata_closure(a1):
 
     Parametros:
     ------------
-        `a1`: Automata 1, debe ser un `NFA`
+        `a1`: Automata 1, debe ser un `NFA`        
 
     Retorna:
     ---------
         `closure`: Automata Clausura (`NFA`)
     '''
     transitions = {}
-
+    
     start = 0
     d1 = 1
     final = a1.states + d1
-
+    
     for (origin, symbol), destinations in a1.map.items():
-        transitions[origin + d1, symbol] = [dest + d1 for dest in destinations]
-
-    transitions[start, ''] = [d1, final]
-
+        transitions[origin + d1, symbol] = [dest + d1 for dest in destinations]        
+    
+    transitions[start, ''] = [d1, final] 
+    
     for f1 in a1.finals:
         trans = transitions.get((f1 + d1, ''), [])
         transitions[f1 + d1, ''] = trans + [final]
     transitions[final, ''] = [start]
-
+            
     states = a1.states +  2
     finals = { final }
-
+    
     return NFA(states, finals, transitions, start)
 
 def automata_positive_closure(a1):
@@ -512,28 +512,28 @@ def automata_positive_closure(a1):
 
     Parametros:
     ------------
-        `a1`: Automata 1, debe ser un `NFA`
+        `a1`: Automata 1, debe ser un `NFA`        
 
     Retorna:
     ---------
         `closure`: Automata Clausura Positiva (`NFA`)
     '''
     transitions = {}
-
+    
     start = 0
     d1 = 1
     final = a1.states + d1
-
+    
     for (origin, symbol), destinations in a1.map.items():
-        transitions[origin + d1, symbol] = [dest + d1 for dest in destinations]
+        transitions[origin + d1, symbol] = [dest + d1 for dest in destinations]        
 
-    transitions[start, ''] = [d1]
+    transitions[start, ''] = [d1] 
 
     for f1 in a1.finals:
         transitions[f1 + d1, ''] = [final]
     transitions[final, ''] = [start]
-
+            
     states = a1.states +  2
     finals = { final }
-
+    
     return NFA(states, finals, transitions, start)
